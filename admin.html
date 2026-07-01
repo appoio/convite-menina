@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Painel Admin</title>
+
+<script>
+  // ══════════════════════════════════════════════════════
+  //  Configure aqui para cada cliente
+  //
+  //  csvUrl → como obter:
+  //  1. Planilha → Arquivo → Compartilhar → Publicar na web
+  //  2. Aba "Confirmações" → formato CSV → Publicar
+  //  3. Copie o link e cole abaixo
+  // ══════════════════════════════════════════════════════
+  const ADMIN_CONFIG = {
+    festa:     "Maitê",
+    senha:     "festa2024",
+    csvUrl:    "https://docs.google.com/spreadsheets/d/e/2PACX-1vT0A0Snay9bA7_c-dXpAbmn_G45mVUlMrGoDcXtjnW4rNpTF5neF24TpG-Ieeht-K10UfRv9RnKpL5J/pub?gid=203268574&single=true&output=csv",
+    scriptUrl: "https://script.google.com/macros/s/AKfycbyRRv3cuCWD8sQXOtHzBcnXOqZWHrI4GYpWO5Wp8l9HX8t5IgPDLJt-R9-MiqPZIP3I/exec",
+  };
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet"/>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0f172a;
+  --surface:  #1e293b;
+  --surface2: #162032;
+  --border:   #334155;
+  --txt:      #e2e8f0;
+  --soft:     #94a3b8;
+  --dim:      #64748b;
+  --accent:   #818cf8;
+  --green:    #4ade80;
+  --green-bg: #14532d;
+  --red:      #f87171;
+  --yellow:   #fbbf24;
+  --radius:   16px;
+}
+
+html, body { min-height: 100vh; background: var(--bg); color: var(--txt); font-family: "Quicksand", sans-serif; font-weight: 600; }
+
+/* ── LOGIN ── */
+#tela-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+.login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 2rem 1.8rem; width: min(360px,100%); text-align: center; }
+.login-logo  { font-size: 2.8rem; margin-bottom: .5rem; }
+.login-titulo{ font-size: 1.15rem; font-weight: 700; }
+.login-sub   { font-size: .82rem; color: var(--dim); margin: .3rem 0 1.4rem; }
+.login-label { display: block; text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--soft); margin-bottom: .4rem; }
+.login-input { width: 100%; padding: .85rem 1rem; background: var(--bg); border: 2px solid var(--border); border-radius: 12px; color: var(--txt); font-family: inherit; font-size: 1rem; font-weight: 600; outline: none; transition: border-color .2s; margin-bottom: 1rem; }
+.login-input:focus { border-color: var(--accent); }
+.login-btn   { width: 100%; padding: .9rem; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; transition: filter .2s; }
+.login-btn:hover { filter: brightness(1.1); }
+.login-erro  { color: var(--red); font-size: .83rem; margin-top: .7rem; min-height: 1.2em; }
+
+/* ── PAINEL ── */
+#tela-painel { display: none; min-height: 100vh; }
+
+.p-header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: .9rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+}
+.p-header h1 { font-size: .97rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+.p-header h1 span { color: var(--accent); }
+.btn-sair { background: transparent; border: 1px solid var(--border); color: var(--soft); border-radius: 8px; padding: .38rem .85rem; font-size: .78rem; font-family: inherit; font-weight: 700; cursor: pointer; transition: all .2s; }
+.btn-sair:hover { border-color: var(--red); color: var(--red); }
+
+.p-body { padding: 1.2rem 1.5rem 5rem; max-width: 720px; margin: 0 auto; }
+
+/* stats */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: .65rem; margin-bottom: 1.4rem; }
+.stat-card  { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem .7rem; text-align: center; }
+.stat-num   { font-size: 1.8rem; font-weight: 700; line-height: 1; color: var(--accent); }
+.stat-label { font-size: .62rem; text-transform: uppercase; letter-spacing: .07em; color: var(--dim); margin-top: .25rem; }
+
+/* toolbar */
+.toolbar { display: flex; gap: .6rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+
+.inp-busca-wrap { position: relative; flex: 1; min-width: 180px; }
+.inp-busca-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--dim); pointer-events: none; }
+.inp-busca {
+  width: 100%; padding: .65rem 1rem .65rem 2.2rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--txt); font-family: inherit;
+  font-size: .88rem; font-weight: 600; outline: none; transition: border-color .2s;
+}
+.inp-busca:focus { border-color: var(--accent); }
+
+/* selects de ordenação/filtro */
+.ctrl-select {
+  padding: .63rem .85rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--soft); font-family: inherit;
+  font-size: .82rem; font-weight: 700; cursor: pointer; outline: none;
+  transition: border-color .2s;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .7rem center;
+  padding-right: 2rem;
+}
+.ctrl-select:focus { border-color: var(--accent); color: var(--txt); }
+
+/* filtro de período */
+.periodo-bar {
+  display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap;
+}
+.chip {
+  padding: .38rem .85rem; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--dim); font-family: inherit; font-size: .78rem;
+  font-weight: 700; cursor: pointer; transition: all .18s;
+}
+.chip:hover  { border-color: var(--accent); color: var(--accent); }
+.chip.ativo  { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* datas customizadas */
+.datas-custom {
+  display: none; gap: .5rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;
+}
+.datas-custom.visivel { display: flex; }
+.inp-data {
+  padding: .6rem .85rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--txt); font-family: inherit;
+  font-size: .82rem; font-weight: 600; outline: none;
+  transition: border-color .2s;
+  color-scheme: dark;
+}
+.inp-data:focus { border-color: var(--accent); }
+.datas-custom span { color: var(--dim); font-size: .82rem; }
+.btn-aplicar {
+  padding: .6rem 1rem; background: var(--accent); color: #fff;
+  border: none; border-radius: 10px; font-family: inherit;
+  font-size: .82rem; font-weight: 700; cursor: pointer; transition: filter .2s;
+}
+.btn-aplicar:hover { filter: brightness(1.1); }
+
+/* botões de ação */
+.acoes-bar { display: flex; gap: .5rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
+.btn-acao {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--soft); border-radius: 10px;
+  padding: .5rem .95rem; font-size: .8rem;
+  font-family: inherit; font-weight: 700; cursor: pointer;
+  transition: all .2s; display: flex; align-items: center; gap: .35rem;
+}
+.btn-acao:hover  { border-color: var(--accent); color: var(--accent); }
+.btn-acao:disabled { opacity: .35; cursor: default; }
+
+/* lista título */
+.lista-titulo { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); margin-bottom: .7rem; }
+
+/* item */
+.item-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: .88rem 1.1rem;
+  margin-bottom: .55rem;
+  display: grid; grid-template-columns: 1fr auto; gap: .22rem .8rem;
+  transition: border-color .2s;
+}
+.item-card:hover { border-color: var(--accent); }
+.item-nome  { font-weight: 700; font-size: .95rem; color: var(--txt); }
+.item-badge { background: var(--green-bg); color: var(--green); font-size: .6rem; font-weight: 700; padding: .17rem .5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: .06em; align-self: start; white-space: nowrap; }
+.item-tel   { font-size: .82rem; color: var(--soft); text-decoration: none; display: flex; align-items: center; gap: .22rem; }
+.item-tel:hover { color: var(--green); }
+.item-data  { font-size: .68rem; color: var(--dim); text-align: right; }
+.item-obs   { grid-column: 1/-1; font-size: .77rem; color: var(--dim); margin-top: .15rem; padding-top: .38rem; border-top: 1px solid var(--border); }
+
+/* separador de data */
+.data-sep {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--accent); margin: 1rem 0 .4rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.data-sep::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+/* estados */
+.estado { text-align: center; padding: 3rem 1rem; color: var(--dim); font-size: .9rem; line-height: 1.6; }
+.estado-icon { font-size: 2.4rem; display: block; margin-bottom: .6rem; }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-left: .5rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .stat-num   { font-size: 1.6rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="tela-login">
+  <div class="login-card">
+    <div class="login-logo">🎉</div>
+    <div class="login-titulo">Painel de Confirmações</div>
+    <div class="login-sub">Festa de <strong id="login-festa"></strong></div>
+    <label class="login-label" for="inp-senha">Senha de acesso</label>
+    <input class="login-input" type="password" id="inp-senha" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') entrar()"/>
+    <button class="login-btn" onclick="entrar()">Entrar no painel</button>
+    <div class="login-erro" id="login-erro"></div>
+  </div>
+</div>
+
+<!-- PAINEL -->
+<div id="tela-painel">
+  <header class="p-header">
+    <h1>📋 Festa de <span id="painel-festa"></span></h1>
+    <button class="btn-sair" onclick="sair()">Sair</button>
+  </header>
+
+  <div class="p-body">
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-num" id="st-total">—</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-num" id="st-hoje">—</div><div class="stat-label">Hoje</div></div>
+      <div class="stat-card"><div class="stat-num" id="st-semana">—</div><div class="stat-label">7 dias</div></div>
+      <div class="stat-card"><div class="stat-num" id="st-obs">—</div><div class="stat-label">Com obs.</div></div>
+    </div>
+
+    <!-- Toolbar: busca + ordenação -->
+    <div class="toolbar">
+      <div class="inp-busca-wrap">
+        <span class="inp-busca-icon">🔍</span>
+        <input class="inp-busca" type="text" id="inp-busca"
+          placeholder="Buscar nome ou telefone…" oninput="aplicarFiltros()"/>
+      </div>
+      <select class="ctrl-select" id="sel-ordem" onchange="aplicarFiltros()">
+        <option value="recentes">↓ Mais recentes</option>
+        <option value="antigos">↑ Mais antigos</option>
+        <option value="az">A → Z</option>
+        <option value="za">Z → A</option>
+      </select>
+    </div>
+
+    <!-- Filtro de período -->
+    <div class="periodo-bar">
+      <button class="chip ativo" data-periodo="todos"   onclick="selecionarPeriodo(this)">Todos</button>
+      <button class="chip"       data-periodo="hoje"    onclick="selecionarPeriodo(this)">Hoje</button>
+      <button class="chip"       data-periodo="7dias"   onclick="selecionarPeriodo(this)">Últimos 7 dias</button>
+      <button class="chip"       data-periodo="30dias"  onclick="selecionarPeriodo(this)">Últimos 30 dias</button>
+      <button class="chip"       data-periodo="custom"  onclick="selecionarPeriodo(this)">📅 Período</button>
+    </div>
+
+    <!-- Datas customizadas -->
+    <div class="datas-custom" id="datas-custom">
+      <input class="inp-data" type="date" id="data-de" title="De"/>
+      <span>até</span>
+      <input class="inp-data" type="date" id="data-ate" title="Até"/>
+      <button class="btn-aplicar" onclick="aplicarFiltros()">Aplicar</button>
+    </div>
+
+    <!-- Ações -->
+    <div class="acoes-bar">
+      <button class="btn-acao" onclick="carregar()">🔄 Atualizar</button>
+      <button class="btn-acao" id="btn-csv" onclick="exportarCSV()" disabled>⬇️ Exportar CSV</button>
+    </div>
+
+    <div class="lista-titulo" id="lista-titulo">Lista de confirmados</div>
+    <div id="lista-confirmados"></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   Estado global
+   ════════════════════════════════════════════ */
+let _dados   = [];   // todos os dados brutos
+let _periodo = "todos";
+let _dataDE  = "";
+let _dataATE = "";
+
+/* ── Init ── */
+(function () {
+  document.getElementById("login-festa").textContent  = ADMIN_CONFIG.festa;
+  document.getElementById("painel-festa").textContent = ADMIN_CONFIG.festa;
+  document.title = `Painel — ${ADMIN_CONFIG.festa}`;
+  document.getElementById("inp-senha").focus();
+})();
+
+/* ════════════════════════════════════════════
+   LOGIN
+   ════════════════════════════════════════════ */
+function entrar() {
+  if (document.getElementById("inp-senha").value === ADMIN_CONFIG.senha) {
+    document.getElementById("tela-login").style.display  = "none";
+    document.getElementById("tela-painel").style.display = "block";
+    carregar();
+  } else {
+    const el = document.getElementById("login-erro");
+    el.textContent = "Senha incorreta. Tente novamente.";
+    document.getElementById("inp-senha").value = "";
+    document.getElementById("inp-senha").focus();
+    setTimeout(() => el.textContent = "", 3000);
+  }
+}
+
+function sair() {
+  document.getElementById("tela-painel").style.display = "none";
+  document.getElementById("tela-login").style.display  = "flex";
+  document.getElementById("inp-senha").value = "";
+  document.getElementById("inp-senha").focus();
+  _dados = [];
+}
+
+/* ════════════════════════════════════════════
+   CARREGAR DADOS (CSV público do Sheets)
+   ════════════════════════════════════════════ */
+async function carregar() {
+  const lista = document.getElementById("lista-confirmados");
+  lista.innerHTML = `<div class="estado">Carregando<span class="spinner"></span></div>`;
+  zerarStats();
+
+  const url = ADMIN_CONFIG.csvUrl;
+  if (!url || url.includes("SEU_ID_AQUI")) {
+    lista.innerHTML = `<div class="estado"><span class="estado-icon">⚙️</span>Configure o <code>csvUrl</code> no ADMIN_CONFIG.</div>`;
+    return;
+  }
+
+  try {
+    const res  = await fetch(url + "&t=" + Date.now()); // cache-bust
+    const text = await res.text();
+    _dados = parseCsv(text);
+    document.getElementById("btn-csv").disabled = _dados.length === 0;
+    atualizarStats(_dados);
+    aplicarFiltros();
+  } catch (_) {
+    lista.innerHTML = `<div class="estado"><span class="estado-icon">❌</span>Erro ao carregar.<br><small>Verifique se o csvUrl está correto e a planilha está publicada.</small></div>`;
+  }
+}
+
+/* ════════════════════════════════════════════
+   PARSER CSV
+   ════════════════════════════════════════════ */
+function parseCsv(text) {
+  return text.trim().split("\n").slice(1)
+    .filter(l => l.trim())
+    .map(l => {
+      const cols = [];
+      let cur = "", dentro = false;
+      for (const ch of l) {
+        if (ch === '"') { dentro = !dentro; continue; }
+        if (ch === "," && !dentro) { cols.push(cur.trim()); cur = ""; continue; }
+        cur += ch;
+      }
+      cols.push(cur.trim());
+      // parseia data pt-BR "DD/MM/AAAA, HH:MM:SS" → Date
+      const dataStr = cols[0] || "";
+      const dataObj = parsePtBR(dataStr);
+      return { dataStr, dataObj, nome: cols[1]||"", telefone: cols[2]||"", obs: cols[3]||"—", festa: cols[4]||"" };
+    });
+}
+
+function parsePtBR(s) {
+  // "01/07/2026, 07:22:37"
+  const m = s.match(/(\d{2})\/(\d{2})\/(\d{4})[,\s]+(\d{2}):(\d{2})/);
+  if (!m) return null;
+  return new Date(+m[3], +m[2]-1, +m[1], +m[4], +m[5]);
+}
+
+/* ════════════════════════════════════════════
+   FILTROS E ORDENAÇÃO
+   ════════════════════════════════════════════ */
+function selecionarPeriodo(el) {
+  document.querySelectorAll(".chip").forEach(c => c.classList.remove("ativo"));
+  el.classList.add("ativo");
+  _periodo = el.dataset.periodo;
+  const custom = document.getElementById("datas-custom");
+  _periodo === "custom" ? custom.classList.add("visivel") : custom.classList.remove("visivel");
+  if (_periodo !== "custom") aplicarFiltros();
+}
+
+function aplicarFiltros() {
+  const busca  = document.getElementById("inp-busca").value.toLowerCase().trim();
+  const ordem  = document.getElementById("sel-ordem").value;
+  const agora  = new Date();
+
+  // 1. Filtro de período
+  let resultado = _dados.filter(r => {
+    if (!r.dataObj) return true;
+    const d = r.dataObj;
+    if (_periodo === "hoje") {
+      return d.toDateString() === agora.toDateString();
+    }
+    if (_periodo === "7dias") {
+      const limite = new Date(agora); limite.setDate(limite.getDate() - 7);
+      return d >= limite;
+    }
+    if (_periodo === "30dias") {
+      const limite = new Date(agora); limite.setDate(limite.getDate() - 30);
+      return d >= limite;
+    }
+    if (_periodo === "custom") {
+      const de  = document.getElementById("data-de").value;
+      const ate = document.getElementById("data-ate").value;
+      if (de  && d < new Date(de  + "T00:00:00")) return false;
+      if (ate && d > new Date(ate + "T23:59:59")) return false;
+      return true;
+    }
+    return true;
+  });
+
+  // 2. Busca por texto
+  if (busca) {
+    resultado = resultado.filter(r =>
+      (r.nome||"").toLowerCase().includes(busca) ||
+      (r.telefone||"").includes(busca)
+    );
+  }
+
+  // 3. Ordenação
+  resultado = resultado.slice().sort((a, b) => {
+    if (ordem === "recentes") return (b.dataObj||0) - (a.dataObj||0);
+    if (ordem === "antigos")  return (a.dataObj||0) - (b.dataObj||0);
+    if (ordem === "az")       return (a.nome||"").localeCompare(b.nome||"", "pt-BR");
+    if (ordem === "za")       return (b.nome||"").localeCompare(a.nome||"", "pt-BR");
+    return 0;
+  });
+
+  renderLista(resultado, ordem);
+}
+
+/* ════════════════════════════════════════════
+   RENDER
+   ════════════════════════════════════════════ */
+function renderLista(rows, ordem) {
+  const lista = document.getElementById("lista-confirmados");
+  const busca = document.getElementById("inp-busca").value.trim();
+  const total = _dados.length;
+
+  if (!total) {
+    lista.innerHTML = `<div class="estado"><span class="estado-icon">🎈</span>Nenhuma confirmação ainda.</div>`;
+    document.getElementById("lista-titulo").textContent = "Lista de confirmados";
+    return;
+  }
+
+  // Label do título
+  const label = rows.length === total && !busca
+    ? `${total} confirmado${total !== 1 ? "s" : ""}`
+    : `${rows.length} de ${total} confirmado${total !== 1 ? "s" : ""}`;
+  document.getElementById("lista-titulo").textContent = label;
+
+  if (!rows.length) {
+    lista.innerHTML = `<div class="estado"><span class="estado-icon">🔍</span>Nenhum resultado encontrado.</div>`;
+    return;
+  }
+
+  // Agrupa por data quando ordenado por data (facilita leitura)
+  const agrupar = ordem === "recentes" || ordem === "antigos";
+
+  if (agrupar) {
+    let html = "";
+    let dataAtual = "";
+    for (const r of rows) {
+      const dataLabel = r.dataObj
+        ? r.dataObj.toLocaleDateString("pt-BR", { weekday:"long", day:"numeric", month:"long" })
+        : "Data desconhecida";
+      if (dataLabel !== dataAtual) {
+        dataAtual = dataLabel;
+        const capitalizado = dataLabel.charAt(0).toUpperCase() + dataLabel.slice(1);
+        html += `<div class="data-sep">${capitalizado}</div>`;
+      }
+      html += itemHtml(r);
+    }
+    lista.innerHTML = html;
+  } else {
+    lista.innerHTML = rows.map(itemHtml).join("");
+  }
+}
+
+function itemHtml(r) {
+  const tel55  = "55" + (r.telefone||"").replace(/\D/g,"");
+  const temObs = r.obs && r.obs !== "—";
+  // hora apenas (sem a data, que já aparece no separador)
+  const hora = r.dataObj
+    ? r.dataObj.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" })
+    : r.dataStr;
+  return `
+    <div class="item-card">
+      <div class="item-nome">${esc(r.nome||"—")}</div>
+      <div class="item-badge">✓ Confirmado</div>
+      <a class="item-tel" href="https://wa.me/${tel55}" target="_blank" rel="noopener">📱 ${esc(r.telefone||"—")}</a>
+      <div class="item-data">${esc(hora)}</div>
+      ${temObs ? `<div class="item-obs">💬 ${esc(r.obs)}</div>` : ""}
+    </div>`;
+}
+
+/* ════════════════════════════════════════════
+   STATS (sempre sobre o total bruto)
+   ════════════════════════════════════════════ */
+function atualizarStats(rows) {
+  const agora   = new Date();
+  const hoje    = agora.toDateString();
+  const limite7 = new Date(agora); limite7.setDate(limite7.getDate() - 7);
+
+  document.getElementById("st-total").textContent  = rows.length;
+  document.getElementById("st-hoje").textContent   = rows.filter(r => r.dataObj?.toDateString() === hoje).length;
+  document.getElementById("st-semana").textContent = rows.filter(r => r.dataObj && r.dataObj >= limite7).length;
+  document.getElementById("st-obs").textContent    = rows.filter(r => r.obs && r.obs !== "—").length;
+}
+
+function zerarStats() {
+  ["st-total","st-hoje","st-semana","st-obs"].forEach(id =>
+    document.getElementById(id).textContent = "—"
+  );
+}
+
+/* ════════════════════════════════════════════
+   EXPORTAR CSV
+   ════════════════════════════════════════════ */
+function exportarCSV() {
+  if (!_dados.length) return;
+  const header = ["Data/Hora","Nome","Telefone","Observações","Festa"];
+  const linhas = [header, ..._dados.map(r => [r.dataStr,r.nome,r.telefone,r.obs,r.festa])]
+    .map(l => l.map(c => `"${String(c||"").replace(/"/g,'""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob(["\uFEFF"+linhas], { type:"text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `confirmacoes-${ADMIN_CONFIG.festa.toLowerCase().replace(/\s+/g,"-")}.csv`;
+  a.click();
+}
+
+/* ── util ── */
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+</script>
+</body>
+</html>
